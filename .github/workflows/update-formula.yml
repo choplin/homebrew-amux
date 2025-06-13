@@ -1,0 +1,39 @@
+name: Update Formula
+
+on:
+  repository_dispatch:
+    types: [update-formula]
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download formula
+        run: |
+          if [[ -n "${{ github.event.client_payload.formula_url }}" ]]; then
+            curl -sL "${{ github.event.client_payload.formula_url }}" -o Formula/amux.rb
+          else
+            echo "No formula URL provided"
+            exit 1
+          fi
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if git diff --quiet Formula/amux.rb; then
+            echo "No changes to formula"
+            exit 0
+          fi
+          
+          VERSION="${{ github.event.client_payload.version }}"
+          git add Formula/amux.rb
+          git commit -m "chore: update amux to v${VERSION}"
+          git push origin main
